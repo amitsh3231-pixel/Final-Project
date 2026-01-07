@@ -26,60 +26,54 @@ The project aims to maximize plant growth through the optimization of the photos
   ### Schematics
 
   # notes!!
+#include <Wire.h>
+#include <Adafruit_ADS1X15.h>
 
-  #include <Adafruit_ADS1X15.h>
+Adafruit_ADS1115 ads;
 
-//Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
-Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */
+// רגישות החיישן RY-GH:
+// 7.68 µV לכל 1 µmol·m⁻²·s⁻¹  =>  7.68e-6 וולט
+const float SENSOR_SENSITIVITY_V_PER_UMOL = 0.00000768;  // V per µmol/m2/s
 
-void setup(void)
-{
-  Serial.begin(9600);
-  Serial.println("Hello!");
+void setup() {
+  Serial.begin(115200);
 
-  Serial.println("Getting single-ended readings from AIN0..3");
-  Serial.println("ADC Range: +/- 6.144V (1 bit = 3mV/ADS1015, 0.1875mV/ADS1115)");
+  // I2C ל‑ESP32: SDA=21, SCL=22
+  Wire.begin(21, 22);
 
-  // The ADC input range (or gain) can be changed via the following
-  // functions, but be careful never to exceed VDD +0.3V max, or to
-  // exceed the upper and lower limits if you adjust the input range!
-  //                                                                ADS1015  ADS1115
-  //                                                                -------  -------
-  // ads.setGain(GAIN_TWOTHIRDS);  // 2/3x gain +/- 6.144V  1 bit = 3mV      0.1875mV (default)
-  // ads.setGain(GAIN_ONE);        // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
-  // ads.setGain(GAIN_TWO);        // 2x gain   +/- 2.048V  1 bit = 1mV      0.0625mV
-  // ads.setGain(GAIN_FOUR);       // 4x gain   +/- 1.024V  1 bit = 0.5mV    0.03125mV
-  // ads.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
-  // ads.setGain(GAIN_SIXTEEN);    // 16x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
-
-  if (!ads.begin()) {
-    Serial.println("Failed to initialize ADS.");
+  // התחלת ה‑ADS1115 בכתובת ברירת מחדל 0x48
+  if (!ads.begin(0x48)) {           // Adafruit ADS1115 [web:24]
+    Serial.println("ADS1115 לא נמצא, בדקי חיבורים");
     while (1);
   }
+
+  // טווח מדידה: ±4.096V (GAIN_ONE)
+  // זה נותן רזולוציה של ~0.125 mV לכל count
+  ads.setGain(GAIN_SIXTEEN);            // [web:24]
+
+  Serial.println("PAR Sensor + ADS1115 + ESP32 מוכן לקריאה");
 }
 
-void loop(void)
-{
-  int16_t adc0, adc1, adc2, adc3;
-  float volts0, volts1, volts2, volts3;
+void loop() {
+  // קריאה חד‑קוטבית מהערוץ A0 (החיישן מחובר ל‑A0 מול GND)
+  int16_t adc0 = ads.readADC_SingleEnded(0);
 
-  adc0 = ads.readADC_SingleEnded(0);
-  adc1 = ads.readADC_SingleEnded(1);
-  adc2 = ads.readADC_SingleEnded(2);
-  adc3 = ads.readADC_SingleEnded(3);
+  // המרת ערך גולמי למתח (וולט)
+  // 4.096V / 32768 ≈ 0.000125 V לכל count ב‑GAIN_SIXTEEN
+  float voltage = adc0 * 0.0000078125;
 
-  volts0 = ads.computeVolts(adc0);
-  volts1 = ads.computeVolts(adc1);
-  volts2 = ads.computeVolts(adc2);
-  volts3 = ads.computeVolts(adc3);
+  // המרת מתח ל‑PPFD (µmol·m⁻²·s⁻¹)
+  float ppfd = voltage / SENSOR_SENSITIVITY_V_PER_UMOL;
 
-  Serial.println("-----------------------------------------------------------");
-  Serial.print("AIN0: "); Serial.print(adc0); Serial.print("  "); Serial.print(volts0); Serial.println("V");
-  Serial.print("AIN1: "); Serial.print(adc1); Serial.print("  "); Serial.print(volts1); Serial.println("V");
-  Serial.print("AIN2: "); Serial.print(adc2); Serial.print("  "); Serial.print(volts2); Serial.println("V");
-  Serial.print("AIN3: "); Serial.print(adc3); Serial.print("  "); Serial.print(volts3); Serial.println("V");
+  Serial.print("ADC: ");
+  Serial.print(adc0);
+  Serial.print("  V: ");
+  Serial.print(voltage, 6);
+  Serial.print("  PPFD: ");
+  Serial.print(ppfd, 1);
+  Serial.println(" umol/m2/s");
 
-  delay(1000);
+  delay(1000);  // קריאה פעם בשנייה
 }
   חישוב צריכת חשמל של הנורה ועלות (הצגת דוגמת חישוב)
   מרחק האור מהצמח
