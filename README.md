@@ -25,7 +25,8 @@ In our project, we used a cucumber plant for which the literature reports an opt
   
 ---
 ### System wiring diagram
-by tal
+<img width="585" height="740" alt="image" src="https://github.com/user-attachments/assets/e2e899cf-1042-4d51-8e0c-152288c00d99" />
+
   ### Steps for building the project
 
 1.Place the ESP32 on a breadboard and connect it to the ADS1115 module and PAR sensor according to the wiring schematic of the system.
