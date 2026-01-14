@@ -14,12 +14,9 @@ Photosynthesis is a series of light‑driven redox reactions in the chloroplasts
 
 ### Hardware
 - ESP32
-- Quantum sensor (humidity)
-- ** Pyrnometer(light)
+- Quantum sensor 
 - ADC (ADS1115 model)
-- Growlight (Driver)
-- OLED display
-- LEDs
+- Growlight
 - Wires
   
 ---
