@@ -23,6 +23,7 @@ In our project, we used a cucumber plant for which the literature reports an opt
 - ADC (ADS1115 model)
 - Growlight
 - Wires
+- Smart socket
   
 ---
 ### System wiring diagram
