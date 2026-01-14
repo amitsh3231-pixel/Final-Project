@@ -1,4 +1,4 @@
-# Agrotech_Lab_2026 project: 
+# Agrotech_Lab_2026 project- light compensation system
 #### Made by Tal Stoler & Hadas Ekshtein & Yuval Masad & Amit Schraub
 ### Project goal
 This project aims to ensure optimal plant growth even during the darker winter days, while intelligently minimizing electricity use to lower energy costs and promote sustainable cultivation. 
