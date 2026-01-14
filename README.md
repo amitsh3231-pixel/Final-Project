@@ -2,6 +2,8 @@
 #### Made by Tal Stoler & Hadas Ekshtein & Yuval Masad & Amit Schraub
 ### Project goal
 This project aims to ensure optimal plant growth even during the darker winter days, while intelligently minimizing electricity use to lower energy costs and promote sustainable cultivation.
+<img width="224" height="397" alt="image" src="https://github.com/user-attachments/assets/5237fe42-8f64-4438-83e8-55b7c98c6e31" />
+
 
 --
 
