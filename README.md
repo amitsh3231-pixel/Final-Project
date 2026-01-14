@@ -10,7 +10,8 @@ This project aims to ensure optimal plant growth even during the darker winter d
 
 ### Backround
 Photosynthesis is a series of light‑driven redox reactions in the chloroplasts that convert solar energy into chemical energy stored in carbohydrates. In the light reactions, photon absorption by photosystems II and I drives electron transport from water to NADP⁺, generating NADPH and establishing a proton gradient used by ATP synthase to produce ATP. In the Calvin cycle, ATP and NADPH power CO₂ fixation by Rubisco and subsequent reduction and regeneration reactions, producing triose phosphates that support biomass accumulation and yield.
-In our project, we used a cucumber plant for which the literature reports an optimal light level of around 200 µmol photons/m² at the canopy.​
+In our project, we used a cucumber plant for which the literature reports an optimal light level of around 200 µmol photons/m² at the canopy.
+​
 <img width="230" height="305" alt="image" src="https://github.com/user-attachments/assets/70065484-37e7-41c5-be5f-8c94213aa6ce" />
 
 
