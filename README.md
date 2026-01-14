@@ -23,19 +23,19 @@ Photosynthesis is a series of light‑driven redox reactions in the chloroplasts
 - Wires
   
 ---
-###
+### System wiring diagram
 by tal
   ### Steps for building the project
 
-Place the ESP32 on a breadboard and connect it to the ADS1115 module and PAR sensor according to the wiring schematic of the system.
+1.Place the ESP32 on a breadboard and connect it to the ADS1115 module and PAR sensor according to the wiring schematic of the system.
 
-Hang the lamp above the plant and adjust its height until the PAR meter reads approximately 200 µmol photons/m² at the plant canopy.
+2.Hang the lamp above the plant and adjust its height until the PAR meter reads approximately 200 µmol photons/m² (or any other target value you choose) at the plant canopy.
 
-Connect the lamp to the smart switch configured for MQTT control, then upload the project code to the ESP32 so it can switch the lamp on and off based on the PAR threshold.
+3.Connect the lamp to the smart switch configured for MQTT control, then upload the project code to the ESP32 so it can switch the lamp on and off based on the PAR threshold.
 
-Position the PAR sensor close to the plant so it represents the light at canopy level, but slightly offset from the lamp beam to minimize direct influence from the artificial light.
+4.Position the PAR sensor close to the plant so it represents the light at canopy level, but slightly offset from the lamp beam to minimize direct influence from the artificial light.
 
-Set up a ThingSpeak channel and link it to the ESP32 data stream in order to log PAR values, lamp on/off status, and estimated power consumption over time, enabling analysis of how long the lamp was active and how much energy it used.
+5.Set up a ThingSpeak channel and link it to the ESP32 data stream in order to log PAR values, lamp on/off status, and estimated power consumption over time, enabling analysis of how long the lamp was active and how much energy it used.
 
   # notes!!
 #include <Wire.h>
