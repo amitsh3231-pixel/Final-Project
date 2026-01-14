@@ -1,14 +1,14 @@
 # Agrotech_Lab_2026 project: 
 #### Made by Tal Stoler & Hadas Ekshtein & Yuval Masad & Amit Schraub
-### Motivation
-The goal of this project is to maintain optimal growing conditions for plants even during winter days when natural light is limited. Using a light sensor, the system detects when illumination drops below 200 µmol photons/m² and automatically activates a supplemental light source. In addition, the system monitors energy consumption and turns off the light when it is no longer needed, optimizing both plant growth and cost efficiency. This approach ensures sufficient light for photosynthesis and healthy development while saving energy and adapting intelligently to environmental conditions.
+### Project goal
+This project aims to ensure optimal plant growth even during the darker winter days, while intelligently minimizing electricity use to lower energy costs and promote sustainable cultivation.
 
- 
+--
 
----
+### Backround
+Photosynthesis is a series of light‑driven redox reactions in the chloroplasts that convert solar energy into chemical energy stored in carbohydrates. In the light reactions, photon absorption by photosystems II and I drives electron transport from water to NADP⁺, generating NADPH and establishing a proton gradient used by ATP synthase to produce ATP. In the Calvin cycle, ATP and NADPH power CO₂ fixation by Rubisco and subsequent reduction and regeneration reactions, producing triose phosphates that support biomass accumulation and yield.
+<img width="230" height="305" alt="image" src="https://github.com/user-attachments/assets/70065484-37e7-41c5-be5f-8c94213aa6ce" />
 
-### Project Overview
-The project aims to maximize plant growth through the optimization of the photosynthesis process. The system monitors light intensity in real-time and automatically activates artificial lighting to compensate for deficiencies whenever levels drop below a critical threshold. (אפשר להוסיף קישור לקוד),(אפשר להוסיף נפח לפסקה בעזרת הסבר על החיישנים וכו' כשתהיה מערכת שרצה)
 
 ---
 
