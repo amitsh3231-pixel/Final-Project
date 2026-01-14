@@ -1,9 +1,7 @@
 # Agrotech_Lab_2026 project: 
 #### Made by Tal Stoler & Hadas Ekshtein & Yuval Masad & Amit Schraub
 ### Project goal
-| Project goal |  |
-| --- | --- |
-| This project aims to ensure optimal plant growth even during the darker winter days, while intelligently minimizing electricity use to lower energy costs and promote sustainable cultivation. | <img src="https://github.com/user-attachments/assets/5237fe42-8f64-4438-83e8-55b7c98c6e31" width="250"> |
+This project aims to ensure optimal plant growth even during the darker winter days, while intelligently minimizing electricity use to lower energy costs and promote sustainable cultivation. | 
 
 
 
