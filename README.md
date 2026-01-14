@@ -1,8 +1,9 @@
 # Agrotech_Lab_2026 project: 
 #### Made by Tal Stoler & Hadas Ekshtein & Yuval Masad & Amit Schraub
 ### Motivation
-To create a smart and simple system that helps the plant to reach an ideal photosynthesis everyday, at home.
-** The system we offer cost around (??)$ . 
+The goal of this project is to maintain optimal growing conditions for plants even during winter days when natural light is limited. Using a light sensor, the system detects when illumination drops below 200 µmol photons/m² and automatically activates a supplemental light source. In addition, the system monitors energy consumption and turns off the light when it is no longer needed, optimizing both plant growth and cost efficiency. This approach ensures sufficient light for photosynthesis and healthy development while saving energy and adapting intelligently to environmental conditions.
+
+$ . 
 
 ---
 
