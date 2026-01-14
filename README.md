@@ -3,7 +3,7 @@
 ### Motivation
 The goal of this project is to maintain optimal growing conditions for plants even during winter days when natural light is limited. Using a light sensor, the system detects when illumination drops below 200 µmol photons/m² and automatically activates a supplemental light source. In addition, the system monitors energy consumption and turns off the light when it is no longer needed, optimizing both plant growth and cost efficiency. This approach ensures sufficient light for photosynthesis and healthy development while saving energy and adapting intelligently to environmental conditions.
 
-$ . 
+ 
 
 ---
 
