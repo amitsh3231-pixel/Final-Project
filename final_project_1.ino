@@ -1,216 +1,211 @@
+/*
+  Final PAR sensor / grow-light controller
+  - ADS1115 reads PPFD sensor
+  - Local control with hysteresis, steady-time, and lockout
+  - MQTT publishes state changes to your broker
+  - ThingSpeak HTTP uploads (free-tier safe) every 20s
+  - Fields mapping (ThingSpeak):
+      field1:  Grow light state (0/1)
+      field2:  Minutes ON today
+      field3:  Daily electricity usage (kWh)
+      field4:  Daily electricity cost (₪)
+      field5:  Weekly electricity usage (kWh)
+      field6:  Weekly electricity cost (₪)
+      field7:  PPFD avg last 20s
+      field8:  Max PPFD today
+  Observations:
+    - This version intentionally DOES NOT use ThingSpeak to receive remote commands
+      (to avoid conflicts with telemetry fields). Use MQTT or a separate TS
+      command feed to do remote overrides.
+*/
+
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <time.h>
 
-// ================= ADS =================
-Adafruit_ADS1115 ads;
+// ===================== HARDWARE / LIBS =====================
+Adafruit_ADS1115 ads;             // ADS1115 ADC module
 
-// ================= WIFI =================
-const char* ssid = "agrotech";
+// ===================== WIFI =====================
+const char* ssid     = "agrotech";
 const char* password = "1Afuna2gezer";
 
-// ================= MQTT =================
+// ===================== MQTT (local) =====================
 const char* mqtt_server   = "192.168.0.102";
 const int   mqtt_port     = 1883;
 const char* mqtt_user     = "mqtt-user";
 const char* mqtt_password = "1234";
 const char* mqtt_topic    = "/greenhouse/sockets/socket1";
 
-// ================= TIME (Israel) =================
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 7200;
-const int   daylightOffset_sec = 3600;
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-// ================= THINGSPEAK =================
+// ===================== NTP / TIME (Israel) =====================
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 7200;     // UTC+2
+const int   daylightOffset_sec = 3600;
+
+// ===================== THINGSPEAK (HTTP) =====================
 const char* TS_HOST = "api.thingspeak.com";
-const char* TS_WRITE_KEY = "JSFT7BA0D9DANFE4";
-const char* TS_READ_KEY  = "XEKG8SWJJLVL5O87";
-const long  TS_CHANNEL_ID = 3223345;
-const unsigned long THINGSPEAK_INTERVAL_MS = 15000UL; // free tier minimum
+const char* TS_WRITE_KEY = "JSFT7BA0D9DANFE4";   // replace if you regenerate
+const long  TS_CHANNEL_ID = 3223345;             // informational only
+// Safety: free-tier minimum is 15s -> we use 20s to be conservative
+const unsigned long THINGSPEAK_INTERVAL_MS = 20000UL;
 unsigned long lastThingSpeakMillis = 0;
 
-// ================= LIGHT =================
-bool lightState = false;
-unsigned long lastChangeMillis = 0; // when lightState last changed
+// ===================== LIGHT CONTROL =====================
+bool lightState = false;            // current relay / light state
+unsigned long lastChangeMillis = 0; // when state last changed (for timeInCurrent)
 
-// ================= SENSOR =================
-const float SENSOR_SENSITIVITY_V_PER_UMOL = 0.00000768;
+// ===================== SENSOR / PPFD =====================
+// scaling: user provided constant (voltage per umol)
+const float SENSOR_SENSITIVITY_V_PER_UMOL = 0.00000768f;
 
-// ================= PPFD CONTROL =================
-const float PPFD_THRESHOLD  = 200.0;
-const float PPFD_HYSTERESIS = 30.0;
+// Control parameters (fine tune as needed)
+const float PPFD_THRESHOLD  = 200.0f;   // target PPFD
+const float PPFD_HYSTERESIS = 30.0f;    // hysteresis around threshold
 
-const unsigned long STEADY_TIME_MS = 10000UL;
-const unsigned long TOGGLE_LOCK_MS = 30000UL;
+// Timers for debouncing and lockout
+const unsigned long STEADY_TIME_MS = 10000UL;    // require 10s stable before toggle
+const unsigned long TOGGLE_LOCK_MS = 30000UL;    // 30s lockout after toggle
 
 unsigned long lastToggleMillis = 0;
 unsigned long belowTimerStart = 0;
 unsigned long aboveTimerStart = 0;
 
-// ================= POWER & COST =================
-const float LAMP_POWER_KW = 0.065;      // 65W
-const float PRICE_PER_KWH = 0.64;       // ₪ / kWh
+// ===================== POWER & COST =====================
+// Lamp average power in kW (65 W -> 0.065 kW)
+const float LAMP_POWER_KW = 0.065f;
+// Israel electricity price (₪ per kWh)
+const float PRICE_PER_KWH = 0.64f;
 
+// Energy counters (kWh)
 float energyToday = 0.0f;
 float energyWeek  = 0.0f;
 float energyMonth = 0.0f;
 float energyTotal = 0.0f;
 
+// last timestamp used for energy accumulation (millis())
 unsigned long lastEnergyUpdate = 0;
+// keep track of day/week/month for resets (tm fields)
 int lastDay = -1, lastWeek = -1, lastMonth = -1;
 
-// ================= PPFD ROLLING BUFFER (15 samples ~ 15s) =================
-const int PPFD_BUF_SIZE = 15;
+// Track how many seconds the light has been ON today
+unsigned long lightOnTodaySeconds = 0;
+
+// ===================== PPFD ROLLING BUFFER =====================
+// We sample roughly once per loop (~1s). Buffer size 20 -> ~20s average.
+const int PPFD_BUF_SIZE = 20;
 float ppfdBuf[PPFD_BUF_SIZE];
 int ppfdBufIndex = 0;
 int ppfdBufCount = 0;
 
-// =================================================
+// daily maximum PPFD (resets at midnight)
+float dailyMaxPPFD = 0.0f;
+
+// ===================== SETUP HELPERS =====================
 
 void setup_wifi() {
-  Serial.print("WiFi...");
+  Serial.print("WiFi: connecting");
   WiFi.begin(ssid, password);
+  // Wait until connected
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.print('.');
   }
-  Serial.println(" connected");
+  Serial.println();
+  Serial.print("WiFi connected, IP=");
   Serial.println(WiFi.localIP());
 
+  // Configure and sync time (blocking until synced)
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   struct tm t;
-  while (!getLocalTime(&t)) delay(500);
-  Serial.println("Time synced");
+  // Wait for NTP sync to succeed before continuing (ensures correct resets)
+  while (!getLocalTime(&t)) {
+    Serial.print('.');
+    delay(500);
+  }
+  Serial.println();
+  Serial.println("Time synced via NTP");
 }
 
 void reconnect() {
+  // MQTT reconnect with simple loop; keep trying
   while (!client.connected()) {
-    Serial.print("MQTT...");
+    Serial.print("MQTT: connecting...");
     if (client.connect("ESP32Client", mqtt_user, mqtt_password)) {
       Serial.println(" connected");
     } else {
-      Serial.print(" failed rc=");
-      Serial.println(client.state());
+      Serial.print(" failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" retrying in 5s");
       delay(5000);
     }
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-
-  setup_wifi();
-  client.setServer(mqtt_server, mqtt_port);
-  reconnect();
-
-  Wire.begin(21, 22);
-  if (!ads.begin(0x48)) {
-    Serial.println("ADS1115 NOT FOUND");
-    while (1) delay(1000);
-  }
-  ads.setGain(GAIN_SIXTEEN);
-
-  lastEnergyUpdate = millis();
-  lastThingSpeakMillis = millis();
-  lastChangeMillis = millis();
-
-  // init buffer
-  ppfdBufCount = 0;
-  ppfdBufIndex = 0;
-
-  Serial.println("SYSTEM READY");
-}
-
-// compute average & max from buffer
+// compute average of the buffer
 float ppfdBufferAvg() {
   if (ppfdBufCount == 0) return 0.0f;
   float s = 0.0f;
-  for (int i=0;i<ppfdBufCount;i++) s += ppfdBuf[i];
+  for (int i = 0; i < ppfdBufCount; ++i) s += ppfdBuf[i];
   return s / (float)ppfdBufCount;
 }
+
+// compute max of the buffer
 float ppfdBufferMax() {
   if (ppfdBufCount == 0) return 0.0f;
   float m = ppfdBuf[0];
-  for (int i=1;i<ppfdBufCount;i++) if (ppfdBuf[i] > m) m = ppfdBuf[i];
+  for (int i = 1; i < ppfdBufCount; ++i) if (ppfdBuf[i] > m) m = ppfdBuf[i];
   return m;
 }
 
-// Read remote command from ThingSpeak field7 last value (returns -1 if none, 0 or 1)
-int readThingSpeakField7Last() {
-  WiFiClient http;
-  if (!http.connect(TS_HOST, 80)) {
-    Serial.println("TS: connect failed");
-    return -1;
+/*
+  publishToThingSpeak
+  - Hard-locked: returns immediately if last upload < THINGSPEAK_INTERVAL_MS
+  - Immediately updates lastThingSpeakMillis before sending to avoid double-post races
+  - Sends the requested 8 fields (see heading comments)
+*/
+void publishToThingSpeak(float ppfdAvg20s, float dailyMaxPPFD_val, unsigned long timeInCurrent_s) {
+  unsigned long now = millis();
+
+  // Enforce hard rate-limit (safe for free tier)
+  if (now - lastThingSpeakMillis < THINGSPEAK_INTERVAL_MS) {
+    // Not yet time for next ThingSpeak upload
+    return;
   }
 
-  // endpoint: /channels/{id}/fields/7/last?api_key=READKEY
-  String req = String("GET /channels/") + String(TS_CHANNEL_ID) + "/fields/7/last?api_key=" + TS_READ_KEY + " HTTP/1.1\r\n" +
-               "Host: " + TS_HOST + "\r\n" +
-               "Connection: close\r\n\r\n";
-  http.print(req);
+  // Lock immediately to avoid multiple threads/loops posting concurrently
+  lastThingSpeakMillis = now;
 
-  // wait for response and read headers
-  unsigned long start = millis();
-  while (http.available() == 0) {
-    if (millis() - start > 2000) { http.stop(); return -1; }
-    delay(5);
-  }
+  // Build payload
+  float dailyCost   = energyToday * PRICE_PER_KWH;
+  float weeklyCost  = energyWeek  * PRICE_PER_KWH;
+  // monthly cost kept internally only (not sent per current mapping)
+  float monthlyCost = energyMonth * PRICE_PER_KWH;
 
-  // skip headers
-  bool isBody = false;
-  String body = "";
-  while (http.available()) {
-    String line = http.readStringUntil('\n');
-    if (!isBody) {
-      if (line == "\r") { isBody = true; }
-    } else {
-      body += line;
-    }
-  }
-  http.stop();
+  unsigned long minutesOnToday = lightOnTodaySeconds / 60UL;
 
-  body.trim();
-  if (body.length() == 0) return -1;
+  String body = "api_key=" + String(TS_WRITE_KEY);
+  body += "&field1=" + String(lightState ? 1 : 0);         // grow light state
+  body += "&field2=" + String(minutesOnToday);             // minutes ON today
+  body += "&field3=" + String(energyToday, 4);             // daily kWh
+  body += "&field4=" + String(dailyCost, 2);               // daily cost (₪)
+  body += "&field5=" + String(energyWeek, 4);              // weekly kWh
+  body += "&field6=" + String(weeklyCost, 2);              // weekly cost (₪)
+  body += "&field7=" + String(ppfdAvg20s, 2);              // ppfd average last 20s
+  body += "&field8=" + String(dailyMaxPPFD_val, 2);        // max ppfd today
 
-  // body should be the last value as plain text e.g. "1" or "0"
-  if (body == "1") return 1;
-  if (body == "0") return 0;
-  // sometimes it may contain JSON or newline; try to parse number
-  int v = body.toInt();
-  if (v == 0 && body != "0") return -1;
-  if (v == 1) return 1;
-  return -1;
-}
-
-// Publish telemetry to ThingSpeak
-void publishToThingSpeak(int remoteCmdSeen, float ppfdAvg, float ppfdMax, float energyToday_kwh, float energyWeek_kwh, float energyMonth_kwh, unsigned long timeInCurrent_s) {
+  // HTTP POST request
   WiFiClient http;
   if (!http.connect(TS_HOST, 80)) {
     Serial.println("TS: connect failed (publish)");
     return;
   }
 
-  // build payload
-  String body = "api_key=";
-  body += TS_WRITE_KEY;
-  body += "&field1="; body += (lightState ? "1" : "0");                // Grow Light Stat
-  body += "&field2="; body += String(timeInCurrent_s);                // Time in Current (s)
-  body += "&field3="; body += String(energyToday_kwh, 4);             // Daily Electricity
-  body += "&field4="; body += String(energyWeek_kwh, 4);              // Weekly Electric
-  body += "&field5="; body += String(energyMonth_kwh, 4);             // Monthly Electri
-  body += "&field6="; body += String(ppfdAvg, 2);                     // PPFD avg last 15s
-  if (remoteCmdSeen >= 0) {
-    body += "&field7="; body += String(remoteCmdSeen);               // Remote command seen (0/1)
-  } else {
-    body += "&field7="; body += "";                                   // empty
-  }
-  body += "&field8="; body += String(ppfdMax, 1);                     // PPFD max last 15s
-
+  // Compose request (include content-length)
   String req = String("POST /update HTTP/1.1\r\n") +
                "Host: " + TS_HOST + "\r\n" +
                "Connection: close\r\n" +
@@ -220,175 +215,209 @@ void publishToThingSpeak(int remoteCmdSeen, float ppfdAvg, float ppfdMax, float 
 
   http.print(req);
 
-  // read response (optional)
+  // Optional: read response (ThingSpeak returns the entry id or "0")
   unsigned long start = millis();
   while (http.available() == 0) {
-    if (millis() - start > 3000) { http.stop(); return; }
+    if (millis() - start > 3000) {
+      Serial.println("TS: no response (timeout)");
+      http.stop();
+      return;
+    }
     delay(5);
   }
-  // skip response for brevity
+
+  // Drain response (for debug you can parse first non-header line)
   while (http.available()) {
     String line = http.readStringUntil('\n');
-    // you can parse the response if you want (TS returns entry id or 0)
+    //Serial.println(line); // uncomment for verbose debugging
   }
   http.stop();
-  Serial.println("ThingSpeak: uploaded");
+
+  Serial.println("ThingSpeak: upload done");
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  // Connect WiFi and sync time (NTP)
+  setup_wifi();
+
+  // Setup MQTT
+  client.setServer(mqtt_server, mqtt_port);
+  reconnect();
+
+  // I2C pins for ESP32: SDA=21, SCL=22 (Wire.begin(SDA, SCL))
+  Wire.begin(21, 22);
+
+  // Initialize ADS1115 at default address 0x48
+  if (!ads.begin(0x48)) {
+    Serial.println("ERROR: ADS1115 not found. Check wiring.");
+    // If ADC is critical, halt here so you notice the problem
+    while (1) { delay(1000); }
+  }
+  // Use maximum gain for small voltages (check if this matches your sensor)
+  ads.setGain(GAIN_SIXTEEN);
+
+  // Initialize timers
+  lastEnergyUpdate = millis();
+  lastThingSpeakMillis = 0;  // allow immediate first upload
+  lastChangeMillis = millis();
+
+  // buffer init
+  ppfdBufCount = 0;
+  ppfdBufIndex = 0;
+
+  dailyMaxPPFD = 0.0f;
+  lightOnTodaySeconds = 0;
+
+  Serial.println("SYSTEM READY");
 }
 
 void loop() {
+  // Ensure MQTT remains connected
   if (!client.connected()) reconnect();
   client.loop();
 
   unsigned long now = millis();
 
-  // ---------- TIME ----------
+  // Get the local time structure; many operations (resets) use the fields
   struct tm timeinfo;
   bool timeSynced = getLocalTime(&timeinfo);
-  int hour = timeinfo.tm_hour;
-  int minute = timeinfo.tm_min;
+  // If NTP fails temporarily, timeSynced will be false. We still continue,
+  // but daily/week/month resets will wait until NTP is available.
+
+  int hour = timeSynced ? timeinfo.tm_hour : 0;
+  int minute = timeSynced ? timeinfo.tm_min : 0;
   int nowMin = hour * 60 + minute;
 
-  // Reset counters by date/week/month
-  if (timeinfo.tm_mday != lastDay) {
-    energyToday = 0.0f;
-    lastDay = timeinfo.tm_mday;
-  }
-  if ((timeinfo.tm_yday / 7) != lastWeek) {
-    energyWeek = 0.0f;
-    lastWeek = timeinfo.tm_yday / 7;
-  }
-  if (timeinfo.tm_mon != lastMonth) {
-    energyMonth = 0.0f;
-    lastMonth = timeinfo.tm_mon;
+  // ===================== Resets by date/week/month =====================
+  if (timeSynced) {
+    if (timeinfo.tm_mday != lastDay) {
+      // New day: reset daily counters
+      energyToday = 0.0f;
+      lightOnTodaySeconds = 0UL;
+      dailyMaxPPFD = 0.0f;   // reset daily maximum
+      lastDay = timeinfo.tm_mday;
+    }
+    // simple weekly bucket using day-of-year /7 (works for monitoring)
+    int weekBucket = timeinfo.tm_yday / 7;
+    if (weekBucket != lastWeek) {
+      energyWeek = 0.0f;
+      lastWeek = weekBucket;
+    }
+    if (timeinfo.tm_mon != lastMonth) {
+      energyMonth = 0.0f;
+      lastMonth = timeinfo.tm_mon;
+    }
   }
 
-  // ---------- NIGHT ----------
-  bool isNight = (nowMin >= 21*60) || (nowMin < 5*60);
+  // ===================== NIGHT DETECTION =====================
+  // If time is not synced, we do NOT force-night-off to avoid accidental shutoff.
+  bool isNight = timeSynced && ( (nowMin >= 21*60) || (nowMin < 5*60) );
 
-  // ---------- SENSOR ----------
+  // ===================== SENSOR READ =====================
+  // Read ADC (single-ended channel 0)
   int16_t adc0 = ads.readADC_SingleEnded(0);
-  float voltage = adc0 * 0.0000078125f;
+  // ADS1115 LSB scaling for GAIN_SIXTEEN -> 0.0000078125 V per count (user provided)
+  float voltage = (float)adc0 * 0.0000078125f;
+  // Convert voltage to PPFD using user sensor sensitivity (V per umol)
   float ppfd = voltage / SENSOR_SENSITIVITY_V_PER_UMOL;
 
-  // store in rolling buffer (1 sample per loop, ~1s)
+  // Update rolling buffer (circular)
   ppfdBuf[ppfdBufIndex] = ppfd;
   ppfdBufIndex = (ppfdBufIndex + 1) % PPFD_BUF_SIZE;
   if (ppfdBufCount < PPFD_BUF_SIZE) ppfdBufCount++;
 
-  float ppfdAvg = ppfdBufferAvg();
-  float ppfdMax = ppfdBufferMax();
+  // Update daily maximum PPFD (for Field 8)
+  if (ppfd > dailyMaxPPFD) dailyMaxPPFD = ppfd;
 
-  // ---------- THRESHOLDS & STEADY ----------
+  // Compute averages and max over buffer
+  float ppfdAvg20s = ppfdBufferAvg();
+  float ppfdMax20s = ppfdBufferMax(); // not sent, but available if needed
+
+  // ===================== THRESHOLD LOGIC (HYSTERESIS + STEADY TIME) =====================
   float lowTh  = PPFD_THRESHOLD - PPFD_HYSTERESIS;
   float highTh = PPFD_THRESHOLD + PPFD_HYSTERESIS;
 
   bool wantOn = false, wantOff = false;
 
-  if (timeSynced && isNight) {
+  if (isNight) {
+    // If it's night, prefer off
     wantOff = true;
   } else {
+    // If PPFD is persistently below low threshold -> want ON
     if (ppfd < lowTh) {
       if (!belowTimerStart) belowTimerStart = now;
       if (now - belowTimerStart >= STEADY_TIME_MS) wantOn = true;
-    } else belowTimerStart = 0;
+    } else {
+      belowTimerStart = 0;
+    }
 
+    // If PPFD is persistently above high threshold -> want OFF
     if (ppfd > highTh) {
       if (!aboveTimerStart) aboveTimerStart = now;
       if (now - aboveTimerStart >= STEADY_TIME_MS) wantOff = true;
-    } else aboveTimerStart = 0;
+    } else {
+      aboveTimerStart = 0;
+    }
   }
 
-  // ---------- LOCAL vs REMOTE CONTROL ----------
-  // Remote read & ThingSpeak upload happen every THINGSPEAK_INTERVAL_MS
-  if (now - lastThingSpeakMillis >= THINGSPEAK_INTERVAL_MS) {
-    // read remote command from field7
-    int remoteCmd = readThingSpeakField7Last(); // -1 / 0 / 1
-
-    // if remote command exists and is different than current state, apply (respect lockout)
-    if (remoteCmd >= 0) {
-      if ((remoteCmd == 1 && !lightState) || (remoteCmd == 0 && lightState)) {
-        if (now - lastToggleMillis >= TOGGLE_LOCK_MS) {
-          lightState = (remoteCmd == 1);
-          client.publish(mqtt_topic, lightState ? "1" : "0");
-          lastToggleMillis = now;
-          lastChangeMillis = now;
-          belowTimerStart = aboveTimerStart = 0;
-          Serial.println("Remote command applied from ThingSpeak");
-        } else {
-          Serial.println("Remote command suppressed by lockout");
-        }
-      }
+  // ===================== ACTION: LOCAL CONTROL & MQTT PUBLISH =====================
+  // Apply toggle if appropriate and not within toggle lockout
+  if ((wantOn && !lightState) || (wantOff && lightState)) {
+    if (now - lastToggleMillis >= TOGGLE_LOCK_MS) {
+      lightState = wantOn; // if wantOn is true we turn on, else turn off
+      // Publish the change to your local MQTT topic (so other systems know)
+      client.publish(mqtt_topic, lightState ? "1" : "0");
+      lastToggleMillis = now;
+      lastChangeMillis = now;
+      // reset the steady timers after a toggle
+      belowTimerStart = aboveTimerStart = 0;
+      Serial.println("Local auto-toggle applied");
     }
+  }
 
-    // apply local PPFD-based toggle only if remote didn't already change state
-    if ((wantOn && !lightState) || (wantOff && lightState)) {
-      if (now - lastToggleMillis >= TOGGLE_LOCK_MS) {
-        lightState = wantOn;
-        client.publish(mqtt_topic, lightState ? "1" : "0");
-        lastToggleMillis = now;
-        lastChangeMillis = now;
-        belowTimerStart = aboveTimerStart = 0;
-        Serial.println("Local auto-toggle applied");
-      }
-    }
-
-    // Update energy using elapsed time since last update
-    if (lastEnergyUpdate == 0) lastEnergyUpdate = now;
-    float hours = (now - lastEnergyUpdate) / 3600000.0f;
+  // ===================== ENERGY / TIME ACCUMULATION =====================
+  if (lastEnergyUpdate == 0) lastEnergyUpdate = now;
+  unsigned long deltaMs = now - lastEnergyUpdate;
+  if (deltaMs > 0) {
+    // compute elapsed hours and seconds to increment counters proportionally
+    float hours = (float)deltaMs / 3600000.0f;
+    unsigned long secs = deltaMs / 1000UL;
     if (lightState) {
       float e = LAMP_POWER_KW * hours;
       energyToday += e;
       energyWeek  += e;
       energyMonth += e;
       energyTotal += e;
+      lightOnTodaySeconds += secs;
     }
     lastEnergyUpdate = now;
-
-    // time in current state (seconds)
-    unsigned long timeInCurrent_s = (now - lastChangeMillis) / 1000UL;
-
-    // publish to ThingSpeak
-    publishToThingSpeak(remoteCmd, ppfdAvg, ppfdMax, energyToday, energyWeek, energyMonth, timeInCurrent_s);
-
-    lastThingSpeakMillis = now;
-  } else {
-    // Apply local PPFD-based toggle outside of ThingSpeak timing (but only if remote didn't recently act)
-    if ((wantOn && !lightState) || (wantOff && lightState)) {
-      if (now - lastToggleMillis >= TOGGLE_LOCK_MS) {
-        lightState = wantOn;
-        client.publish(mqtt_topic, lightState ? "1" : "0");
-        lastToggleMillis = now;
-        lastChangeMillis = now;
-        belowTimerStart = aboveTimerStart = 0;
-        Serial.println("Local auto-toggle applied (non-TS cycle)");
-      }
-    }
-
-    // Update energy incrementally every loop (if on)
-    float hoursSmall = (now - lastEnergyUpdate) / 3600000.0f;
-    if (hoursSmall > 0.0f) {
-      if (lightState) {
-        float e = LAMP_POWER_KW * hoursSmall;
-        energyToday += e;
-        energyWeek  += e;
-        energyMonth += e;
-        energyTotal += e;
-      }
-      lastEnergyUpdate = now;
-    }
   }
 
-  // ---------- DEBUG ----------
+  // ===================== THINGSPEAK UPLOAD (every THINGSPEAK_INTERVAL_MS) =====================
+  unsigned long timeInCurrent_s = (now - lastChangeMillis) / 1000UL;
+  if (now - lastThingSpeakMillis >= THINGSPEAK_INTERVAL_MS) {
+    // publish telemetry: this will internally enforce the 20s lock as well
+    publishToThingSpeak(ppfdAvg20s, dailyMaxPPFD, timeInCurrent_s);
+    // lastThingSpeakMillis is set inside publishToThingSpeak()
+  }
+
+  // ===================== DEBUG / SERIAL OUTPUT =====================
   unsigned long belowElapsed = (belowTimerStart ? (now - belowTimerStart) : 0UL);
   unsigned long aboveElapsed = (aboveTimerStart ? (now - aboveTimerStart) : 0UL);
   unsigned long timeInCurrent = (now - lastChangeMillis) / 1000UL;
 
-  Serial.printf("%02d:%02d | %s | Light=%s | PPFD=%.1f | avg15=%.1f | max15=%.1f\n",
+  Serial.printf("%02d:%02d | %s | Light=%s | PPFD=%.1f | avg20=%.1f | maxDay=%.1f\n",
                 hour, minute, (isNight ? "NIGHT" : "DAY"), (lightState ? "ON" : "OFF"),
-                ppfd, ppfdAvg, ppfdMax);
+                ppfd, ppfdAvg20s, dailyMaxPPFD);
   Serial.printf(" TimeInCur=%lus | Today=%.4fkWh ₪%.2f | Month=%.3fkWh ₪%.2f\n",
-                timeInCurrent, energyToday, energyToday * PRICE_PER_KWH, energyMonth, energyMonth * PRICE_PER_KWH);
-  Serial.printf(" below_t=%lums above_t=%lums lastTS=%lums\n\n", belowElapsed, aboveElapsed, (now - lastThingSpeakMillis));
+                timeInCurrent, energyToday, energyToday * PRICE_PER_KWH,
+                energyMonth, energyMonth * PRICE_PER_KWH);
+  Serial.printf(" below_t=%lums above_t=%lums lastTS=%lums\n\n",
+                belowElapsed, aboveElapsed, (now - lastThingSpeakMillis));
 
+  // Sample roughly once per second (keeps buffer ~20s)
   delay(1000);
 }
