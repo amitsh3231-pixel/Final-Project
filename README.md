@@ -44,4 +44,10 @@ In our project, we used a cucumber plant for which the literature reports an opt
 
 5. Set up a ThingSpeak channel and link it to the ESP32 data stream in order to log PAR values, lamp on/off status, and estimated power consumption over time, enabling analysis of how long the lamp was active and how much energy it used.
 
- 
+
+####
+להוסיף משפט על ההשקייה, ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
+####
+
+ ![first turn on](https://github.com/user-attachments/assets/93498883-d7f5-410f-b3c6-9f05e722e2fd)
+
