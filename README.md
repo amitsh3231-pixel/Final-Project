@@ -28,7 +28,8 @@ In our project, we used a cucumber plant for which the literature reports an opt
   
 ---
 ### System wiring diagram
-<img width="585" height="740" alt="image" src="https://github.com/user-attachments/assets/e2e899cf-1042-4d51-8e0c-152288c00d99" />
+![Uploading image.png…]()
+
 
   ### Steps for building the project
 
