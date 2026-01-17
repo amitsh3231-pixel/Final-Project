@@ -49,5 +49,6 @@ In our project, we used a cucumber plant for which the literature reports an opt
 להוסיף משפט על ההשקייה, ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
 ####
 
-<img width="300" height="400" alt="image" src=https://github.com/user-attachments/assets/93498883-d7f5-410f-b3c6-9f05e722e2fd)>
+<img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/ff78740d-13ec-4610-94b8-17bb515fce0d" />
+
 
