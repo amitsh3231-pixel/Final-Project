@@ -20,7 +20,7 @@ In our project, we used a cucumber plant for which the literature reports an opt
 
 ### Hardware
 - ESP32
-- Quantum sensor 
+- PAR Quantum sensor 
 - ADC (ADS1115 model)
 - Growlight
 - Wires
@@ -46,7 +46,7 @@ In our project, we used a cucumber plant for which the literature reports an opt
 
 
 ####
-להוסיף משפט על ההשקייה, ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
+להוסיף משפט על ההשקייה, על הטווח פוטונים של הפוטוסינתזה ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
 ####
 
 <img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/ff78740d-13ec-4610-94b8-17bb515fce0d" />
