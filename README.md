@@ -28,7 +28,7 @@ In our project, we used a cucumber plant for which the literature reports an opt
   
 ---
 ### System wiring diagram
-<img width="696" height="922" alt="image" src="https://github.com/user-attachments/assets/b4d3c369-d850-4a6a-8668-dfd89c09cfcb" />
+<img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/b4d3c369-d850-4a6a-8668-dfd89c09cfcb" />
 
 
 
@@ -49,5 +49,5 @@ In our project, we used a cucumber plant for which the literature reports an opt
 להוסיף משפט על ההשקייה, ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
 ####
 
- ![first turn on](https://github.com/user-attachments/assets/93498883-d7f5-410f-b3c6-9f05e722e2fd)
+<img width="300" height="400" alt="image" src=https://github.com/user-attachments/assets/93498883-d7f5-410f-b3c6-9f05e722e2fd)>
 
