@@ -52,9 +52,9 @@ The control code includes several safeguards: automatic nighttime shutoff (9pm-5
 Plants were irrigated independently using a fixed schedule of three watering events per day, each lasting 3 minutes, to ensure non‑limiting water availability
 ### PPFD Measurement
 PPFD (Photosynthetic Photon Flux Density) counts photons only in the photosynthetically active radiation range of 400–700 nm.
-להוסיף משפט על ההשקייה, על הטווח פוטונים של הפוטוסינתזה ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
 ####
-
+---
 <img width="300" height="400" alt="image" src="https://github.com/user-attachments/assets/ff78740d-13ec-4610-94b8-17bb515fce0d" />
-
+ 
+![WhatsApp Image 2026-01-14 at 18 32 43](https://github.com/user-attachments/assets/981297ce-0e2a-4b6d-923d-06a2085a2acb)
 
