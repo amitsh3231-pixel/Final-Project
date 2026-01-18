@@ -48,7 +48,10 @@ In our project, we used a cucumber plant for which the literature reports an opt
 ####
 ### Control safeguards
 The control code includes several safeguards: automatic nighttime shutoff (9pm-5am) to give plants essential darkness for their circadian rhythm and to avoid light stress, a hysteresis band around the 200 µmol m⁻² s⁻¹ target to prevent rapid flickering when PPFD hovers near the threshold, and delays between switching events to avoid excessive toggling of the grow light and smart socket.
-
+### Irrigation Schedule
+Plants were irrigated independently using a fixed schedule of three watering events per day, each lasting 3 minutes, to ensure non‑limiting water availability
+### PPFD Measurement
+PPFD (Photosynthetic Photon Flux Density) counts photons only in the photosynthetically active radiation range of 400–700 nm.
 להוסיף משפט על ההשקייה, על הטווח פוטונים של הפוטוסינתזה ועל דגשים בקוד- הכיבוי האוטומטי בלילה, הטראשהולד שלא תהבהב הנורה בקפיצות מעל ומתחת 200, הדיליי...
 ####
 
