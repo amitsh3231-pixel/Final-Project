@@ -54,15 +54,18 @@ Plants were irrigated independently using a fixed schedule of three watering eve
 PPFD (Photosynthetic Photon Flux Density) counts photons only in the photosynthetically active radiation range of 400–700 nm.
 ####
 ---
-<div style="display: flex; gap: 20px;">
+<!-- שורה 1: 3 תמונות -->
+<div style="display: flex; gap: 15px;">
   <img src="https://github.com/user-attachments/assets/ff78740d-13ec-4610-94b8-17bb515fce0d" width="220" height="300" alt="setup">
-  ![תמונה טל וארז](https://github.com/user-attachments/assets/a0df8f3b-eee8-4d30-8819-ce623283db39)
-  ![תמונה הדס וטל](https://github.com/user-attachments/assets/064f9bae-18d5-4c31-9246-4e28b833230f)
+  <img src="https://github.com/user-attachments/assets/a0df8f3b-eee8-4d30-8819-ce623283db39" width="220" height="300" alt="טל וארז">
+  <img src="https://github.com/user-attachments/assets/064f9bae-18d5-4c31-9246-4e28b833230f" width="220" height="300" alt="הדס וטל">
 </div>
 
-<div style="display: flex; justify-content: center; margin-top: 20px;">
+<!-- שורה 2: תמונה אחת -->
+<div style="display: flex; justify-content: center; margin-top: 15px;">
   <img src="https://github.com/user-attachments/assets/981297ce-0e2a-4b6d-923d-06a2085a2acb" width="300" height="400" alt="lamp">
 </div>
+
 
 
 
