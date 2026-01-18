@@ -44,7 +44,7 @@ In our project, we used a cucumber plant for which the literature reports an opt
 
 5. Set up a ThingSpeak channel and link it to the ESP32 data stream in order to log PAR values, lamp on/off status, and estimated power consumption over time, enabling analysis of how long the lamp was active and how much energy it used.
 
-
+---
 ####
 ### Control safeguards
 The control code includes several safeguards: automatic nighttime shutoff (9pm-5am) to give plants essential darkness for their circadian rhythm and to avoid light stress, a hysteresis band around the 200 µmol m⁻² s⁻¹ target to prevent rapid flickering when PPFD hovers near the threshold, and delays between switching events to avoid excessive toggling of the grow light and smart socket.
