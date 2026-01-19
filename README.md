@@ -57,7 +57,7 @@ PPFD (Photosynthetic Photon Flux Density) counts photons only in the photosynthe
 
 <div style="display: flex; gap: 15px;">
   <img src="https://github.com/user-attachments/assets/ff78740d-13ec-4610-94b8-17bb515fce0d" width="220" height="300" alt="setup">
-  <img src="https://github.com/user-attachments/assets/a0df8f3b-eee8-4d30-8819-ce623283db39" width="200" height="300" alt="טל וארז">
+  <img src="https://github.com/user-attachments/assets/a0df8f3b-eee8-4d30-8819-ce623283db39" width="180" height="300" alt="טל וארז">
   <img src="https://github.com/user-attachments/assets/064f9bae-18d5-4c31-9246-4e28b833230f" width="220" height="300" alt="הדס וטל">
 </div>
 
